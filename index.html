@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#101319">
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>669 聊天記錄 · 閱讀器</title>
+<style>
+:root{--bg:#0b0e12;--surface:#171c23;--surface2:#202631;--text:#f4f6fa;--sub:#9da8b6;--line:#2b3440;--accent:#80db9b;--accent2:#263f34;--radius:18px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased;min-width:280px}
+button,input,select{font:inherit}button{cursor:pointer;color:inherit;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+a{color:var(--accent)}
+#app{max-width:1200px;margin:auto;min-height:100vh}
+header{z-index:20;position:sticky;top:0;background:rgba(15,19,25,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px}
+.top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.brand{min-width:0;display:flex;align-items:center;gap:10px;font-weight:750;font-size:15px;letter-spacing:.15px}
+.brand-mark{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(140deg,#255c42,#163b39);color:#c5ffd8;font-size:18px;box-shadow:inset 1px 1px 1px #689e84}
+.brand small{display:block;color:var(--sub);font-weight:400;font-size:11px;letter-spacing:0;margin-top:2px}
+.header-actions{display:flex;gap:7px;align-items:center}
+.iconbtn,.navbtn,.chip{background:var(--surface);border:1px solid var(--line);border-radius:12px;min-height:39px;min-width:39px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.iconbtn:active,.navbtn:active,.chip:active{transform:scale(.97)}
+.iconbtn.on,.chip.on{background:var(--accent2);border-color:#488864;color:#b8ffd1}
+.tabs{display:flex;gap:4px;margin:12px auto 0;background:#10151b;border:1px solid var(--line);border-radius:14px;padding:4px;max-width:500px}
+.tab{min-width:0;flex:1;background:transparent;border:0;border-radius:10px;padding:9px 5px;font-weight:650;font-size:13px;color:var(--sub)}
+.tab.active{color:var(--text);background:#2b3540}
+main{padding:17px 12px 100px;min-height:70vh}
+#single{display:none;text-align:center}
+#single.active{display:block}
+.page-card{position:relative;margin:0 auto;max-width:570px;padding:7px;background:#171b21;border:1px solid #28303a;border-radius:17px;box-shadow:0 16px 55px rgba(0,0,0,.26)}
+.page-card img{width:100%;height:auto;max-height:calc(100dvh - 265px);object-fit:contain;display:block;border-radius:11px;background:#101010;user-select:none;-webkit-user-drag:none;touch-action:pan-y pinch-zoom}
+.page-card.zoomed{max-width:none;overflow-x:auto}
+.page-card.zoomed img{max-height:none;width:auto;max-width:none;height:auto;min-width:100%;object-fit:unset}
+.imgstate{position:absolute;inset:25% 12%;display:grid;place-items:center;font-size:14px;color:var(--sub);pointer-events:none}
+.photo-meta{color:var(--sub);font-size:12px;padding:12px 2px;display:flex;justify-content:center;gap:12px}
+.single-actions{display:flex;gap:9px;align-items:center;justify-content:center;margin:8px auto 18px}
+.navbtn{font-weight:650;flex:1;max-width:220px;padding:12px}
+.navbtn:disabled{opacity:.35;cursor:not-allowed}
+.tip{color:var(--sub);font-size:12px;text-align:center;line-height:1.75;margin:14px auto;max-width:640px}
+#flow,#gridmode{display:none}#flow.active,#gridmode.active{display:block}
+#flowList{max-width:570px;margin:auto;display:grid;gap:22px}
+.flow-item{position:relative;content-visibility:auto;contain-intrinsic-size:auto 700px}
+.flow-caption{display:flex;align-items:center;justify-content:space-between;color:var(--sub);padding:5px 4px 9px;font-size:13px}
+.flow-caption button{border:0;background:none;color:var(--accent);padding:4px 6px}
+.flow-item img{display:block;width:100%;height:auto;border-radius:12px;background:#12171c;border:1px solid var(--line);box-shadow:0 7px 26px #0004}
+#flowSentinel{height:40px}
+#thumbGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:900px;margin:auto}
+.thumb{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:6px;text-align:left;min-width:0}
+.thumb img{width:100%;height:145px;object-fit:cover;object-position:top center;border-radius:8px;background:#0b0d0f;display:block}
+.thumb span{display:block;margin:6px 2px 0;color:var(--sub);font-size:12px;font-variant-numeric:tabular-nums}
+.thumb.selected{border-color:var(--accent)}
+#gridMore{display:block;margin:20px auto 5px;padding:12px 22px;background:var(--surface2);border:1px solid var(--line);border-radius:12px}
+#gridMore[hidden]{display:none}
+footer{z-index:22;position:fixed;bottom:0;left:0;right:0;background:rgba(15,19,25,.98);border-top:1px solid var(--line);padding:9px max(12px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.bottom-inner{max-width:620px;margin:auto;display:flex;align-items:center;gap:8px}
+.bottom-inner .iconbtn{background:#202731}
+.jumpbox{height:41px;background:#141a22;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:4px;padding:0 7px;min-width:0;flex:1;justify-content:center}
+.jumpbox input{background:transparent;border:0;outline:0;color:#fff;min-width:0;max-width:64px;width:45px;text-align:right;font-size:16px;font-weight:750;font-variant-numeric:tabular-nums}
+.jumpbox span{white-space:nowrap;color:var(--sub);font-size:13px}
+.jumpbox button{border:0;border-radius:8px;background:#304b3a;color:#c6ffdb;font-size:12px;padding:6px 9px;margin-left:auto}
+#seek{width:100%;height:3px;appearance:none;-webkit-appearance:none;margin:0;display:block;background:#253039;accent-color:var(--accent)}
+#seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px #173625}
+#toast{position:fixed;z-index:50;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);border:1px solid #44554d;background:#23392c;color:#d6ffe2;padding:11px 15px;border-radius:12px;max-width:90vw;display:none;text-align:center;font-size:13px}
+#toast.visible{display:block}
+#privacy{position:fixed;z-index:60;inset:0;background:#090b0eea;display:none;place-items:center;padding:20px}
+#privacy.show{display:grid}
+.dialog{background:#181f26;border:1px solid #35413a;border-radius:18px;padding:22px;max-width:430px;width:100%;box-shadow:0 30px 90px #0009}
+.dialog h2{font-size:20px;margin:0 0 10px}.dialog p{color:var(--sub);line-height:1.65;font-size:14px}
+.dialog button{border:1px solid #4f8564;color:#d5ffe2;background:#254232;border-radius:12px;padding:11px 17px}
+.empty{color:var(--sub);text-align:center;margin:30px auto;padding:25px}
+@media(min-width:650px){header{padding-left:26px;padding-right:26px}.brand{font-size:17px}main{padding-top:25px}#thumbGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.thumb img{height:175px}.page-card img{max-height:calc(100dvh - 270px)}}
+@media(max-width:649px){.single-actions{display:none}}
+@media(max-width:360px){.brand{font-size:13px}.brand small{font-size:10px}.header-actions{gap:4px}.iconbtn{padding:0 8px}.thumb img{height:130px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+body:not(.vault-open) #app,body:not(.vault-open) footer{display:none}
+#unlockGate{min-height:100dvh;display:grid;place-items:center;padding:24px 18px;background:#0b0e12;color:#f2f7f4}
+.gatebox{border-radius:23px;background:#171d24;border:1px solid #37443e;box-shadow:0 20px 90px #0008;padding:28px;width:min(440px,100%)}
+.gatebrand{color:#a0e5b4;font-weight:750;letter-spacing:.1em;font-size:13px}
+.gatebox h1{font-size:24px;line-height:1.3;margin:12px 0}
+.gatebox p{color:#9da8b6;line-height:1.7;font-size:14px}
+.gatebox input[type=password]{width:100%;background:#111820;border:1px solid #3a4b46;color:white;border-radius:13px;padding:15px;margin:14px 0;font-size:16px}
+.gatebox button{width:100%;padding:14px;background:#337e56;border:1px solid #4c9f6d;color:white;border-radius:12px;font-weight:750}
+.gatebox label{display:flex;gap:9px;margin-top:14px;font-size:13px;color:#b7c8bd}
+#unlockStatus{margin:15px 0 0;min-height:20px;font-size:12px;color:#a3d8ae}
+</style>
+</head>
+<body>
+
+<div id="unlockGate">
+ <div class="gatebox"><div class="gatebrand">PRIVATE READING · 私人閱讀</div>
+  <h1>669 張聊天記錄</h1>
+  <p>這份網頁使用檔案加密，只有取得私人閱讀權限的裝置才能查看圖片。閱讀密碼只在瀏覽器中驗證，不會傳送給網站。</p>
+  <form id="unlockForm">
+   <input id="unlockPassword" type="password" placeholder="輸入閱讀密碼" autocomplete="off" aria-label="閱讀密碼">
+   <button id="unlockButton" type="submit">解鎖閱讀器</button>
+   <label><input type="checkbox" id="rememberDevice" checked> 記住這台裝置，下次免輸入</label>
+  </form>
+  <div id="unlockStatus" role="status">正在準備安全閱讀器…</div>
+ </div>
+</div>
+
+<div id="app">
+<header>
+  <div class="top">
+    <div class="brand"><div class="brand-mark">✉</div><div>長期戀愛聊天記錄<small>669 張完整截圖 · 私人閱讀</small></div></div>
+    <div class="header-actions">
+      <button class="iconbtn" id="bookmark" title="收藏目前頁" aria-label="收藏目前頁">☆</button>
+      <button class="iconbtn" id="bookmarkList" title="前往收藏" aria-label="前往收藏">☷</button>
+      <button class="iconbtn" id="privacyBtn" title="隱藏畫面" aria-label="隱藏畫面">◉</button>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="閱讀模式">
+    <button class="tab active" data-mode="single" role="tab" aria-selected="true">單張閱讀</button>
+    <button class="tab" data-mode="flow" role="tab" aria-selected="false">連續閱讀</button>
+    <button class="tab" data-mode="grid" role="tab" aria-selected="false">縮圖總覽</button>
+  </nav>
+</header>
+<main>
+  <section id="single" class="active" aria-label="單張閱讀">
+    <div class="page-card" id="pageCard">
+      <div class="imgstate" id="imgState">載入圖片中…</div>
+      <img id="mainImage" alt="聊天截圖" decoding="async" fetchpriority="high">
+    </div>
+    <div class="photo-meta"><span id="fileName">001.png</span><span id="zoomLabel">點圖片可放大</span></div>
+    <div class="single-actions">
+      <button class="navbtn" id="prev">← 上一張</button>
+      <button class="navbtn" id="next">下一張 →</button>
+    </div>
+    <p class="tip">左右滑動切換圖片 · 點圖片放大 · 用下方頁碼直接跳轉<br>閱讀進度與收藏僅儲存在目前瀏覽器。</p>
+  </section>
+  <section id="flow" aria-label="連續閱讀">
+    <div id="flowList"></div><div id="flowSentinel"></div>
+    <p class="tip" id="flowHint">往下滑動會自動載入下一批圖片，避免一次下載全部 669 張。</p>
+  </section>
+  <section id="gridmode" aria-label="縮圖總覽">
+    <div id="thumbGrid"></div><button id="gridMore">顯示更多縮圖</button>
+    <p class="tip">縮圖只在滑入畫面時載入。點選任一張即進入單張閱讀。</p>
+  </section>
+</main>
+</div>
+<footer>
+  <div class="bottom-inner">
+    <button class="iconbtn" id="footPrev" aria-label="上一張">←</button>
+    <div class="jumpbox"><input id="pageInput" type="number" min="1" max="669" inputmode="numeric" aria-label="圖片編號" value="1"><span>/ 669</span><button id="jump">跳轉</button></div>
+    <button class="iconbtn" id="footNext" aria-label="下一張">→</button>
+    <button class="iconbtn" id="topBtn" aria-label="返回頂部">↑</button>
+  </div>
+</footer>
+<div id="toast" role="status"></div>
+<div id="privacy" aria-hidden="true"><div class="dialog"><h2>畫面已隱藏</h2><p>私人聊天記錄暫時不會顯示。請留意：這只是畫面遮罩，真正的存取權限須由網站伺服器保護。</p><button id="reveal">返回閱讀</button></div></div>
+<script src="vault-browser.js"></script>
+<script>
+(() => {
+"use strict";
+const TOTAL=669;
+const store=(key,value)=>{try{if(value===undefined)return localStorage.getItem(key);localStorage.setItem(key,value)}catch(e){}return null};
+const initial=parseInt(store("chat669-page"),10);
+let page=Number.isInteger(initial)&&initial>=1&&initial<=TOTAL?initial:1;
+let mode="single",flowLast=0,gridLast=0,lastToast=null;
+const favs=new Set((()=>{try{let x=JSON.parse(store("chat669-favs")||"[]");return Array.isArray(x)?x.filter(y=>Number.isInteger(y)&&y>=1&&y<=TOTAL):[]}catch{return []}})());
+const el=id=>document.getElementById(id);
+const path=n=>`images/${String(n).padStart(3,"0")}.png`;
+const fmt=n=>String(n).padStart(3,"0")+".png";
+const clamp=n=>Math.min(TOTAL,Math.max(1,Math.trunc(n)||1));
+let toastTimer;
+function toast(t){let x=el("toast");x.textContent=t;x.classList.add("visible");clearTimeout(toastTimer);toastTimer=setTimeout(()=>x.classList.remove("visible"),2600)}
+function updateButtons(){
+ el("pageInput").value=page;el("prev").disabled=page<=1;el("next").disabled=page>=TOTAL;
+ el("footPrev").disabled=page<=1;el("footNext").disabled=page>=TOTAL;
+ el("bookmark").textContent=favs.has(page)?"★":"☆";
+ el("bookmark").classList.toggle("on",favs.has(page));
+ document.title=`${page} / ${TOTAL} · 聊天記錄`;
+ store("chat669-page",String(page));
+}
+const image=el("mainImage");
+image.onload=()=>{el("imgState").style.display="none"};
+image.onerror=()=>{el("imgState").style.display="grid";el("imgState").textContent="圖片讀取失敗，請確認網站圖片路徑"};
+function renderSingle(){
+ el("pageCard").classList.remove("zoomed");el("zoomLabel").textContent="點圖片可放大";
+ el("imgState").textContent="載入圖片中…";el("imgState").style.display="grid";
+ image.alt=`第 ${page} 張聊天記錄`;
+ image.removeAttribute("src");VaultReader.load(image,page);el("fileName").textContent=fmt(page);
+ const n=page+1;if(n<=TOTAL){VaultReader.decode(n).catch(()=>{});}
+}
+function selectPage(n,scroll=true){
+ const next=clamp(Number(n));page=next;updateButtons();
+ if(mode==="single")renderSingle();
+ else if(mode==="flow"){if(next<flowLast-4||next>flowLast){resetFlow(next)}else{const node=document.getElementById("flow-"+next);if(node)node.scrollIntoView({behavior:"smooth",block:"start"})}}
+ else{const thumb=document.querySelector(`[data-thumb="${next}"]`);if(thumb)thumb.scrollIntoView({block:"center"})}
+ if(scroll&&mode==="single")window.scrollTo({top:0,behavior:"smooth"});
+}
+function createFlow(n){
+ const node=document.createElement("article");node.className="flow-item";node.id="flow-"+n;node.dataset.n=n;
+ const cap=document.createElement("div");cap.className="flow-caption";
+ const span=document.createElement("span");span.textContent=`${fmt(n)}  ·  ${n} / ${TOTAL}`;
+ const button=document.createElement("button");button.textContent="單張查看 ↗";button.onclick=()=>{page=n;changeMode("single")};
+ cap.append(span,button);
+ const img=document.createElement("img");VaultReader.observe(img,n);img.loading="lazy";img.decoding="async";img.alt=`第 ${n} 張聊天截圖`;
+ node.append(cap,img);return node;
+}
+const watchFlow=new IntersectionObserver(entries=>{
+ let candidates=entries.filter(e=>e.isIntersecting).map(e=>({n:Number(e.target.dataset.n),top:e.boundingClientRect.top}));
+ if(candidates.length&&mode==="flow"){
+  candidates.sort((a,b)=>Math.abs(a.top-130)-Math.abs(b.top-130));
+  const n=candidates[0].n;if(n!==page){page=n;updateButtons();}
+ }
+},{rootMargin:"-50px 0px -65% 0px",threshold:0});
+function appendFlow(){
+ const list=el("flowList");
+ const frag=document.createDocumentFragment();
+ const first=flowLast+1;const last=Math.min(TOTAL,flowLast+10);
+ for(let n=first;n<=last;n++){const node=createFlow(n);frag.append(node);}
+ list.append(frag);for(let n=first;n<=last;n++)watchFlow.observe(el("flow-"+n));
+ flowLast=last;
+ if(flowLast>=TOTAL)el("flowHint").textContent="669 張已全部列入閱讀清單。";
+}
+function resetFlow(n){
+ watchFlow.disconnect();el("flowList").replaceChildren();flowLast=n-1;appendFlow();
+ requestAnimationFrame(()=>{const node=el("flow-"+n);if(node)node.scrollIntoView({block:"start"});});
+}
+const loader=new IntersectionObserver(entries=>{for(let e of entries){if(e.isIntersecting&&mode==="flow"&&flowLast<TOTAL)appendFlow()}},{rootMargin:"850px"});
+loader.observe(el("flowSentinel"));
+function appendGrid(){
+ const list=el("thumbGrid");const f=document.createDocumentFragment();
+ for(let n=gridLast+1;n<=Math.min(TOTAL,gridLast+42);n++){
+  const b=document.createElement("button");b.className="thumb"+(n===page?" selected":"");b.dataset.thumb=n;
+  const img=document.createElement("img");VaultReader.observe(img,n);img.loading="lazy";img.decoding="async";img.alt=`第 ${n} 張縮圖`;
+  const label=document.createElement("span");label.textContent=fmt(n);
+  b.append(img,label);b.onclick=()=>{page=n;changeMode("single")};f.append(b);
+ }
+ gridLast=Math.min(TOTAL,gridLast+42);list.append(f);el("gridMore").hidden=gridLast===TOTAL;
+}
+function changeMode(next){
+ mode=next;
+ document.querySelectorAll(".tab").forEach(b=>{const active=b.dataset.mode===next;b.classList.toggle("active",active);b.setAttribute("aria-selected",active)});
+ for(const m of ["single","flow","grid"])el(m==="grid"?"gridmode":m).classList.toggle("active",m===next);
+ if(next==="single")renderSingle();
+ if(next==="flow")resetFlow(page);
+ if(next==="grid"){if(gridLast===0)appendGrid();else document.querySelectorAll(".thumb").forEach(b=>b.classList.toggle("selected",Number(b.dataset.thumb)===page))}
+ window.scrollTo({top:0,behavior:"instant"});
+ updateButtons();store("chat669-mode",next);
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>changeMode(b.dataset.mode)));
+const advance=d=>{if(mode==="grid"){selectPage(page+d)}else selectPage(page+d)};
+for(const [id,dir] of [["prev",-1],["footPrev",-1],["next",1],["footNext",1]])el(id).addEventListener("click",()=>advance(dir));
+function jump(){const number=Number(el("pageInput").value);if(!Number.isInteger(number)||number<1||number>TOTAL){toast("請輸入 1～669 的頁碼");el("pageInput").value=page;return}selectPage(number)}
+el("jump").onclick=jump;el("pageInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();jump();el("pageInput").blur()}});
+el("topBtn").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+el("bookmark").onclick=()=>{if(favs.has(page))favs.delete(page);else favs.add(page);store("chat669-favs",JSON.stringify([...favs]));updateButtons();toast(favs.has(page)?"已收藏 "+fmt(page):"已移除收藏")};
+el("bookmarkList").onclick=()=>{
+ if(favs.size===0){toast("目前還沒有收藏的頁面");return}
+ const list=[...favs].sort((a,b)=>a-b);
+ const target=list.find(n=>n>page)??list[0];selectPage(target);toast(`收藏頁 ${list.indexOf(target)+1} / ${list.length}`);
+};
+el("privacyBtn").onclick=()=>{el("privacy").classList.add("show");el("privacy").setAttribute("aria-hidden","false")};
+el("reveal").onclick=()=>{el("privacy").classList.remove("show");el("privacy").setAttribute("aria-hidden","true")};
+el("gridMore").onclick=appendGrid;
+image.onclick=()=>{el("pageCard").classList.toggle("zoomed");el("zoomLabel").textContent=el("pageCard").classList.contains("zoomed")?"再點圖片恢復":"點圖片可放大"};
+document.addEventListener("keydown",e=>{
+ if(["INPUT","TEXTAREA"].includes(document.activeElement?.tagName))return;
+ if(e.key==="ArrowLeft")selectPage(page-1);
+ if(e.key==="ArrowRight")selectPage(page+1);
+ if(e.key==="Escape"&&el("privacy").classList.contains("show"))el("reveal").click();
+});
+let touchStart=null;
+image.addEventListener("touchstart",e=>{
+ if(e.touches.length!==1||el("pageCard").classList.contains("zoomed"))return;
+ touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY,time:Date.now()};
+},{passive:true});
+image.addEventListener("touchend",e=>{
+ if(!touchStart||e.changedTouches.length!==1){touchStart=null;return}
+ const dx=e.changedTouches[0].clientX-touchStart.x,dy=e.changedTouches[0].clientY-touchStart.y;
+ if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.3){selectPage(page+(dx<0?1:-1));}
+ touchStart=null;
+},{passive:true});
+let seekTimer;
+const seek=document.createElement("input");seek.id="seek";seek.type="range";seek.min="1";seek.max=String(TOTAL);seek.value=String(page);seek.setAttribute("aria-label","快速跳頁");
+document.querySelector("footer").prepend(seek);
+seek.addEventListener("input",e=>{const n=clamp(Number(e.target.value));el("pageInput").value=n;clearTimeout(seekTimer);seekTimer=setTimeout(()=>selectPage(n,false),140)});
+const syncSeek=()=>{seek.value=String(page)};const original=updateButtons;updateButtons=function(){original();syncSeek()};
+const saved=store("chat669-mode");VaultReader.start(()=>changeMode(["single","flow","grid"].includes(saved)?saved:"single"));
+})();
+</script>
+</body>
+</html>
