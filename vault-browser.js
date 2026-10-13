@@ -25,12 +25,15 @@ const status=t=>document.querySelector("#unlockStatus").textContent=t;
 async function derive(value){
  const bytes=new TextEncoder().encode(value);
  const base=await crypto.subtle.importKey("raw",bytes,"PBKDF2",false,["deriveKey"]);
- const salt=Uint8Array.from(atob(settings.salt),c=>c.charCodeAt(0));
- return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:settings.iterations,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+ const salt=Uint8Array.from(atob(settings.pinSalt),c=>c.charCodeAt(0));
+ const kek=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:settings.iterations,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+ const packed=Uint8Array.from(atob(settings.wrappedKey),c=>c.charCodeAt(0));
+ const unwrapped=await crypto.subtle.decrypt({name:"AES-GCM",iv:packed.slice(0,12)},kek,packed.slice(12));
+ return crypto.subtle.importKey("raw",unwrapped,{name:"AES-GCM",length:256},false,["decrypt"]);
 }
 async function getDb(){
  return new Promise((done,fail)=>{
-  const req=indexedDB.open("private-reader-669",1);
+  const req=indexedDB.open("private-reader-669-v2",1);
   req.onupgradeneeded=()=>req.result.createObjectStore("access");
   req.onsuccess=()=>done(req.result);req.onerror=()=>fail(req.error);
  })
@@ -48,7 +51,7 @@ async function start(callback){
  try{
   settings=await (await fetch("vault-meta.json",{cache:"no-store"})).json();
   const found=location.hash.match(/^#open=(.*)$/);
-  if(found){const pass=decodeURIComponent(found[1]);history.replaceState(null,"",location.pathname+location.search);status("正在驗證私人連結…");if(await unlock(await derive(pass),callback,true))return}
+  if(found){const pass=decodeURIComponent(found[1]);history.replaceState(null,"",location.pathname+location.search);status("正在驗證私人連結…");try{if(await unlock(await derive(pass),callback,true))return}catch(e){status("舊連結已失效，請使用新密碼解鎖。")}}
   else{const k=await restore();if(k){status("正在恢復閱讀權限…");if(await unlock(k,callback,false))return}}
   status("閱讀密碼只在本裝置使用，不會傳送。");
   document.querySelector("#unlockForm").onsubmit=async e=>{
