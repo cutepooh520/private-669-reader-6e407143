@@ -11,7 +11,7 @@
 <title>669 聊天記錄 · 閱讀器</title>
 <style>
 :root{--bg:#0b0e12;--surface:#171c23;--surface2:#202631;--text:#f4f6fa;--sub:#9da8b6;--line:#2b3440;--accent:#80db9b;--accent2:#263f34;--radius:18px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased;min-width:280px}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overscroll-behavior-y:none}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased;min-width:280px;overscroll-behavior-y:none}
 button,input,select{font:inherit}button{cursor:pointer;color:inherit;touch-action:manipulation}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 a{color:var(--accent)}
@@ -134,6 +134,11 @@ body:not(.vault-open) #app,body:not(.vault-open) footer{display:none}
     <p class="tip">左右滑動切換圖片 · 點圖片放大 · 用下方頁碼直接跳轉<br>閱讀進度與收藏僅儲存在目前瀏覽器。</p>
   </section>
   <section id="flow" aria-label="連續閱讀">
+    <div id="flowTopArea" style="text-align:center;padding:6px 0 14px;">
+      <button id="flowTopBtn" type="button" style="display:none;margin:0 auto;padding:10px 20px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;color:var(--accent);font-weight:650;">↑ 載入前 10 張</button>
+      <div id="flowTopHint" class="tip" style="margin:4px auto;display:none;"></div>
+      <div id="flowTopSentinel" style="height:12px;"></div>
+    </div>
     <div id="flowList"></div><div id="flowSentinel"></div>
     <p class="tip" id="flowHint">往下滑動會自動載入下一批圖片，避免一次下載全部 669 張。</p>
   </section>
@@ -161,7 +166,7 @@ const TOTAL=669;
 const store=(key,value)=>{try{if(value===undefined)return localStorage.getItem(key);localStorage.setItem(key,value)}catch(e){}return null};
 const initial=parseInt(store("chat669-page"),10);
 let page=Number.isInteger(initial)&&initial>=1&&initial<=TOTAL?initial:1;
-let mode="single",flowLast=0,gridLast=0,lastToast=null;
+let mode="single",flowFirst=1,flowLast=0,gridLast=0,lastToast=null,isPrepending=false;
 const favs=new Set((()=>{try{let x=JSON.parse(store("chat669-favs")||"[]");return Array.isArray(x)?x.filter(y=>Number.isInteger(y)&&y>=1&&y<=TOTAL):[]}catch{return []}})());
 const el=id=>document.getElementById(id);
 const path=n=>`images/${String(n).padStart(3,"0")}.png`;
@@ -190,7 +195,28 @@ function renderSingle(){
 function selectPage(n,scroll=true){
  const next=clamp(Number(n));page=next;updateButtons();
  if(mode==="single")renderSingle();
- else if(mode==="flow"){if(next<flowLast-4||next>flowLast){resetFlow(next)}else{const node=document.getElementById("flow-"+next);if(node)node.scrollIntoView({behavior:"smooth",block:"start"})}}
+ else if(mode==="flow"){
+  const existingNode=el("flow-"+next);
+  if(existingNode){
+   existingNode.scrollIntoView({behavior:"smooth",block:"start"});
+  }else if(next<flowFirst){
+   if(flowFirst-next<=15){
+    while(flowFirst>next)prependFlow();
+    const node=el("flow-"+next);
+    if(node)node.scrollIntoView({behavior:"smooth",block:"start"});
+   }else{
+    resetFlow(next);
+   }
+  }else if(next>flowLast){
+   if(next-flowLast<=15){
+    while(flowLast<next)appendFlow();
+    const node=el("flow-"+next);
+    if(node)node.scrollIntoView({behavior:"smooth",block:"start"});
+   }else{
+    resetFlow(next);
+   }
+  }
+ }
  else{const thumb=document.querySelector(`[data-thumb="${next}"]`);if(thumb)thumb.scrollIntoView({block:"center"})}
  if(scroll&&mode==="single")window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -210,21 +236,76 @@ const watchFlow=new IntersectionObserver(entries=>{
   const n=candidates[0].n;if(n!==page){page=n;updateButtons();}
  }
 },{rootMargin:"-50px 0px -65% 0px",threshold:0});
+function updateFlowBounds(){
+ const topBtn=el("flowTopBtn");
+ const topHint=el("flowTopHint");
+ if(flowFirst<=1){
+  if(topBtn)topBtn.style.display="none";
+  if(topHint){topHint.style.display="block";topHint.textContent="已到第 1 張截圖（最開頭）";}
+ }else{
+  if(topBtn){topBtn.style.display="inline-block";topBtn.textContent=`↑ 載入前 10 張 (至 ${fmt(Math.max(1,flowFirst-10))})`;}
+  if(topHint)topHint.style.display="none";
+ }
+ if(flowLast>=TOTAL)el("flowHint").textContent="669 張已全部列入閱讀清單。";
+ else el("flowHint").textContent="往下滑動會自動載入下一批圖片，避免一次下載全部 669 張。";
+}
 function appendFlow(){
  const list=el("flowList");
  const frag=document.createDocumentFragment();
  const first=flowLast+1;const last=Math.min(TOTAL,flowLast+10);
+ if(first>last)return;
  for(let n=first;n<=last;n++){const node=createFlow(n);frag.append(node);}
  list.append(frag);for(let n=first;n<=last;n++)watchFlow.observe(el("flow-"+n));
  flowLast=last;
- if(flowLast>=TOTAL)el("flowHint").textContent="669 張已全部列入閱讀清單。";
+ updateFlowBounds();
+}
+function prependFlow(){
+ if(isPrepending||flowFirst<=1)return;
+ isPrepending=true;
+ const list=el("flowList");
+ const count=10;
+ const start=Math.max(1,flowFirst-count);
+ const end=flowFirst-1;
+ if(start>end){isPrepending=false;return;}
+ const frag=document.createDocumentFragment();
+ for(let n=start;n<=end;n++){const node=createFlow(n);frag.append(node);}
+ const oldScrollHeight=document.documentElement.scrollHeight;
+ const oldScrollTop=window.scrollY||document.documentElement.scrollTop;
+ list.prepend(frag);
+ for(let n=start;n<=end;n++)watchFlow.observe(el("flow-"+n));
+ flowFirst=start;
+ const newScrollHeight=document.documentElement.scrollHeight;
+ window.scrollTo({
+  top:oldScrollTop+(newScrollHeight-oldScrollHeight),
+  behavior:"instant"
+ });
+ updateFlowBounds();
+ setTimeout(()=>{isPrepending=false;},120);
 }
 function resetFlow(n){
- watchFlow.disconnect();el("flowList").replaceChildren();flowLast=n-1;appendFlow();
- requestAnimationFrame(()=>{const node=el("flow-"+n);if(node)node.scrollIntoView({block:"start"});});
+ watchFlow.disconnect();
+ el("flowList").replaceChildren();
+ const start=Math.max(1,n<=10?1:n-5);
+ const end=Math.min(TOTAL,Math.max(n+9,start+9));
+ flowFirst=start;
+ flowLast=end;
+ const frag=document.createDocumentFragment();
+ for(let i=start;i<=end;i++){frag.append(createFlow(i));}
+ el("flowList").append(frag);
+ for(let i=start;i<=end;i++)watchFlow.observe(el("flow-"+i));
+ updateFlowBounds();
+ requestAnimationFrame(()=>{
+  const node=el("flow-"+n);
+  if(node)node.scrollIntoView({block:"start"});
+ });
 }
 const loader=new IntersectionObserver(entries=>{for(let e of entries){if(e.isIntersecting&&mode==="flow"&&flowLast<TOTAL)appendFlow()}},{rootMargin:"850px"});
 loader.observe(el("flowSentinel"));
+const topLoader=new IntersectionObserver(entries=>{for(let e of entries){if(e.isIntersecting&&mode==="flow"&&flowFirst>1)prependFlow()}},{rootMargin:"650px 0px 0px 0px"});
+const topSentinel=el("flowTopSentinel");
+if(topSentinel)topLoader.observe(topSentinel);
+const topBtn=el("flowTopBtn");
+if(topBtn)topBtn.onclick=()=>prependFlow();
 function appendGrid(){
  const list=el("thumbGrid");const f=document.createDocumentFragment();
  for(let n=gridLast+1;n<=Math.min(TOTAL,gridLast+42);n++){
@@ -242,7 +323,7 @@ function changeMode(next){
  if(next==="single")renderSingle();
  if(next==="flow")resetFlow(page);
  if(next==="grid"){if(gridLast===0)appendGrid();else document.querySelectorAll(".thumb").forEach(b=>b.classList.toggle("selected",Number(b.dataset.thumb)===page))}
- window.scrollTo({top:0,behavior:"instant"});
+ if(next!=="flow")window.scrollTo({top:0,behavior:"instant"});
  updateButtons();store("chat669-mode",next);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>changeMode(b.dataset.mode)));
