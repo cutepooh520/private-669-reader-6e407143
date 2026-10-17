@@ -32,7 +32,7 @@ main{padding:17px 12px 100px;min-height:70vh}
 #single{display:none;text-align:center}
 #single.active{display:block}
 .page-card{position:relative;margin:0 auto;max-width:570px;padding:7px;background:#171b21;border:1px solid #28303a;border-radius:17px;box-shadow:0 16px 55px rgba(0,0,0,.26)}
-.page-card img{width:100%;height:auto;max-height:calc(100dvh - 265px);object-fit:contain;display:block;border-radius:11px;background:#101010;user-select:none;-webkit-user-drag:none;touch-action:pan-y pinch-zoom}
+.page-card img{width:100%;height:auto;max-height:calc(100dvh - 265px);aspect-ratio:1290/2796;object-fit:contain;display:block;border-radius:11px;background:#101010;user-select:none;-webkit-user-drag:none;touch-action:pan-y pinch-zoom}
 .page-card.zoomed{max-width:none;overflow-x:auto}
 .page-card.zoomed img{max-height:none;width:auto;max-width:none;height:auto;min-width:100%;object-fit:unset}
 .imgstate{position:absolute;inset:25% 12%;display:grid;place-items:center;font-size:14px;color:var(--sub);pointer-events:none}
@@ -43,10 +43,10 @@ main{padding:17px 12px 100px;min-height:70vh}
 .tip{color:var(--sub);font-size:12px;text-align:center;line-height:1.75;margin:14px auto;max-width:640px}
 #flow,#gridmode{display:none}#flow.active,#gridmode.active{display:block}
 #flowList{max-width:570px;margin:auto;display:grid;gap:22px}
-.flow-item{position:relative;content-visibility:auto;contain-intrinsic-size:auto 700px}
+.flow-item{position:relative;scroll-margin-top:calc(115px + env(safe-area-inset-top,0px))}
 .flow-caption{display:flex;align-items:center;justify-content:space-between;color:var(--sub);padding:5px 4px 9px;font-size:13px}
 .flow-caption button{border:0;background:none;color:var(--accent);padding:4px 6px}
-.flow-item img{display:block;width:100%;height:auto;border-radius:12px;background:#12171c;border:1px solid var(--line);box-shadow:0 7px 26px #0004}
+.flow-item img{display:block;width:100%;height:auto;aspect-ratio:1290/2796;border-radius:12px;background:#12171c;border:1px solid var(--line);box-shadow:0 7px 26px #0004}
 #flowSentinel{height:40px}
 #thumbGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:900px;margin:auto}
 .thumb{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:6px;text-align:left;min-width:0}
@@ -162,16 +162,25 @@ body:not(.vault-open) #app,body:not(.vault-open) footer{display:none}
 <script>
 (() => {
 "use strict";
+if("scrollRestoration" in history)history.scrollRestoration="manual";
 const TOTAL=669;
 const store=(key,value)=>{try{if(value===undefined)return localStorage.getItem(key);localStorage.setItem(key,value)}catch(e){}return null};
 const initial=parseInt(store("chat669-page"),10);
 let page=Number.isInteger(initial)&&initial>=1&&initial<=TOTAL?initial:1;
-let mode="single",flowFirst=1,flowLast=0,gridLast=0,lastToast=null,isPrepending=false;
+let mode="single",flowFirst=1,flowLast=0,gridLast=0,lastToast=null,isPrepending=false,isRestoringFlow=false;
 const favs=new Set((()=>{try{let x=JSON.parse(store("chat669-favs")||"[]");return Array.isArray(x)?x.filter(y=>Number.isInteger(y)&&y>=1&&y<=TOTAL):[]}catch{return []}})());
 const el=id=>document.getElementById(id);
 const path=n=>`images/${String(n).padStart(3,"0")}.png`;
 const fmt=n=>String(n).padStart(3,"0")+".png";
 const clamp=n=>Math.min(TOTAL,Math.max(1,Math.trunc(n)||1));
+const saveProgress=()=>{
+ try{
+  store("chat669-page",String(page));
+  store("chat669-mode",mode);
+ }catch(e){}
+};
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveProgress()});
+window.addEventListener("pagehide",saveProgress);
 let toastTimer;
 function toast(t){let x=el("toast");x.textContent=t;x.classList.add("visible");clearTimeout(toastTimer);toastTimer=setTimeout(()=>x.classList.remove("visible"),2600)}
 function updateButtons(){
@@ -180,7 +189,7 @@ function updateButtons(){
  el("bookmark").textContent=favs.has(page)?"★":"☆";
  el("bookmark").classList.toggle("on",favs.has(page));
  document.title=`${page} / ${TOTAL} · 聊天記錄`;
- store("chat669-page",String(page));
+ if(!isRestoringFlow)store("chat669-page",String(page));
 }
 const image=el("mainImage");
 image.onload=()=>{el("imgState").style.display="none"};
@@ -198,23 +207,11 @@ function selectPage(n,scroll=true){
  else if(mode==="flow"){
   const existingNode=el("flow-"+next);
   if(existingNode){
-   existingNode.scrollIntoView({behavior:"smooth",block:"start"});
-  }else if(next<flowFirst){
-   if(flowFirst-next<=15){
-    while(flowFirst>next)prependFlow();
-    const node=el("flow-"+next);
-    if(node)node.scrollIntoView({behavior:"smooth",block:"start"});
-   }else{
-    resetFlow(next);
-   }
-  }else if(next>flowLast){
-   if(next-flowLast<=15){
-    while(flowLast<next)appendFlow();
-    const node=el("flow-"+next);
-    if(node)node.scrollIntoView({behavior:"smooth",block:"start"});
-   }else{
-    resetFlow(next);
-   }
+   isRestoringFlow=true;
+   existingNode.scrollIntoView({behavior:scroll?"smooth":"instant",block:"start"});
+   setTimeout(()=>{isRestoringFlow=false;},scroll?350:100);
+  }else{
+   resetFlow(next);
   }
  }
  else{const thumb=document.querySelector(`[data-thumb="${next}"]`);if(thumb)thumb.scrollIntoView({block:"center"})}
@@ -230,8 +227,9 @@ function createFlow(n){
  node.append(cap,img);return node;
 }
 const watchFlow=new IntersectionObserver(entries=>{
+ if(isRestoringFlow||isPrepending||mode!=="flow")return;
  let candidates=entries.filter(e=>e.isIntersecting).map(e=>({n:Number(e.target.dataset.n),top:e.boundingClientRect.top}));
- if(candidates.length&&mode==="flow"){
+ if(candidates.length){
   candidates.sort((a,b)=>Math.abs(a.top-130)-Math.abs(b.top-130));
   const n=candidates[0].n;if(n!==page){page=n;updateButtons();}
  }
@@ -260,7 +258,7 @@ function appendFlow(){
  updateFlowBounds();
 }
 function prependFlow(){
- if(isPrepending||flowFirst<=1)return;
+ if(isPrepending||isRestoringFlow||flowFirst<=1)return;
  isPrepending=true;
  const list=el("flowList");
  const count=10;
@@ -280,9 +278,10 @@ function prependFlow(){
   behavior:"instant"
  });
  updateFlowBounds();
- setTimeout(()=>{isPrepending=false;},120);
+ setTimeout(()=>{isPrepending=false;},200);
 }
 function resetFlow(n){
+ isRestoringFlow=true;
  watchFlow.disconnect();
  el("flowList").replaceChildren();
  const start=Math.max(1,n<=10?1:n-5);
@@ -294,14 +293,31 @@ function resetFlow(n){
  el("flowList").append(frag);
  for(let i=start;i<=end;i++)watchFlow.observe(el("flow-"+i));
  updateFlowBounds();
- requestAnimationFrame(()=>{
+ const align=()=>{
   const node=el("flow-"+n);
-  if(node)node.scrollIntoView({block:"start"});
+  if(node){
+   if(n===1)window.scrollTo({top:0,behavior:"instant"});
+   else node.scrollIntoView({block:"start",behavior:"instant"});
+  }
+ };
+ align();
+ requestAnimationFrame(()=>{
+  align();
+  setTimeout(()=>{
+   align();
+   isRestoringFlow=false;
+  },180);
  });
 }
 const loader=new IntersectionObserver(entries=>{for(let e of entries){if(e.isIntersecting&&mode==="flow"&&flowLast<TOTAL)appendFlow()}},{rootMargin:"850px"});
 loader.observe(el("flowSentinel"));
-const topLoader=new IntersectionObserver(entries=>{for(let e of entries){if(e.isIntersecting&&mode==="flow"&&flowFirst>1)prependFlow()}},{rootMargin:"650px 0px 0px 0px"});
+const topLoader=new IntersectionObserver(entries=>{
+ for(let e of entries){
+  if(e.isIntersecting&&mode==="flow"&&flowFirst>1&&!isRestoringFlow&&!isPrepending&&window.scrollY>80){
+   prependFlow();
+  }
+ }
+},{rootMargin:"300px 0px 0px 0px"});
 const topSentinel=el("flowTopSentinel");
 if(topSentinel)topLoader.observe(topSentinel);
 const topBtn=el("flowTopBtn");
