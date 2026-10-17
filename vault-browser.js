@@ -5,8 +5,8 @@ const objectUrls=new Map();
 const pending=new Map();
 let settings;
 function encPath(n){return "vault/"+String(n).padStart(3,"0")+".bin"}
-async function decode(n){
- if(objectUrls.has(n))return objectUrls.get(n);
+async function decode(n,force=false){
+ if(!force&&objectUrls.has(n))return objectUrls.get(n);
  if(pending.has(n))return pending.get(n);
  const promise=(async()=>{
   const response=await fetch(encPath(n));
@@ -15,7 +15,7 @@ async function decode(n){
   const result=await crypto.subtle.decrypt({name:"AES-GCM",iv:data.slice(0,12)},secretKey,data.slice(12));
   const url=URL.createObjectURL(new Blob([result],{type:"image/webp"}));
   objectUrls.set(n,url);
-  if(objectUrls.size>32){const k=objectUrls.keys().next().value;URL.revokeObjectURL(objectUrls.get(k));objectUrls.delete(k)}
+  if(objectUrls.size>160){const k=objectUrls.keys().next().value;URL.revokeObjectURL(objectUrls.get(k));objectUrls.delete(k)}
   return url
  })();
  pending.set(n,promise);
@@ -63,10 +63,41 @@ async function start(callback){
  }catch(e){status("無法開啟閱讀器，請稍後重試。")}
 }
 async function load(img,n){
+ if(!img)return;
  img.dataset.encNum=String(n);
- try{const url=await decode(n);if(img.dataset.encNum===String(n))img.src=url}catch(e){img.alt="圖片無法載入"}
+ try{
+  const url=await decode(n);
+  if(img.dataset.encNum===String(n)){
+   if(img.src!==url)img.src=url;
+  }
+ }catch(e){
+  img.alt="圖片無法載入";
+ }
 }
-const loader=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){loader.unobserve(e.target);load(e.target,Number(e.target.dataset.encNum))}},{rootMargin:"500px"});
-function observe(img,n){img.dataset.encNum=String(n);loader.observe(img)}
+const loader=new IntersectionObserver(entries=>{
+ for(const e of entries){
+  if(e.isIntersecting){
+   loader.unobserve(e.target);
+   load(e.target,Number(e.target.dataset.encNum));
+  }
+ }
+},{rootMargin:"1200px 0px"});
+function observe(img,n){
+ if(!img)return;
+ img.dataset.encNum=String(n);
+ const check=()=>{
+  if(img.isConnected){
+   const r=img.getBoundingClientRect();
+   if(r.bottom>=-1200&&r.top<=window.innerHeight+1200){
+    load(img,n);
+   }else{
+    loader.observe(img);
+   }
+  }else{
+   requestAnimationFrame(check);
+  }
+ };
+ check();
+}
 window.VaultReader={start,decode,load,observe};
 })();

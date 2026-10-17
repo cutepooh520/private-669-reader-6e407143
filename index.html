@@ -158,7 +158,7 @@ body:not(.vault-open) #app,body:not(.vault-open) footer{display:none}
 </footer>
 <div id="toast" role="status"></div>
 <div id="privacy" aria-hidden="true"><div class="dialog"><h2>畫面已隱藏</h2><p>私人聊天記錄暫時不會顯示。請留意：這只是畫面遮罩，真正的存取權限須由網站伺服器保護。</p><button id="reveal">返回閱讀</button></div></div>
-<script src="vault-browser.js?v=20261013-pin2"></script>
+<script src="vault-browser.js?v=20261018-flowfix"></script>
 <script>
 (() => {
 "use strict";
@@ -223,7 +223,10 @@ function createFlow(n){
  const span=document.createElement("span");span.textContent=`${fmt(n)}  ·  ${n} / ${TOTAL}`;
  const button=document.createElement("button");button.textContent="單張查看 ↗";button.onclick=()=>{page=n;changeMode("single")};
  cap.append(span,button);
- const img=document.createElement("img");VaultReader.observe(img,n);img.loading="lazy";img.decoding="async";img.alt=`第 ${n} 張聊天截圖`;
+ const img=document.createElement("img");
+ img.decoding="async";
+ img.alt=`第 ${n} 張聊天截圖`;
+ img.onerror=()=>{VaultReader.decode(n,true).then(u=>{img.src=u}).catch(()=>{});};
  node.append(cap,img);return node;
 }
 const watchFlow=new IntersectionObserver(entries=>{
@@ -253,7 +256,13 @@ function appendFlow(){
  const first=flowLast+1;const last=Math.min(TOTAL,flowLast+10);
  if(first>last)return;
  for(let n=first;n<=last;n++){const node=createFlow(n);frag.append(node);}
- list.append(frag);for(let n=first;n<=last;n++)watchFlow.observe(el("flow-"+n));
+ list.append(frag);
+ for(let n=first;n<=last;n++){
+  const node=el("flow-"+n);
+  watchFlow.observe(node);
+  const img=node.querySelector("img");
+  if(img)VaultReader.observe(img,n);
+ }
  flowLast=last;
  updateFlowBounds();
 }
@@ -270,7 +279,12 @@ function prependFlow(){
  const oldScrollHeight=document.documentElement.scrollHeight;
  const oldScrollTop=window.scrollY||document.documentElement.scrollTop;
  list.prepend(frag);
- for(let n=start;n<=end;n++)watchFlow.observe(el("flow-"+n));
+ for(let n=start;n<=end;n++){
+  const node=el("flow-"+n);
+  watchFlow.observe(node);
+  const img=node.querySelector("img");
+  if(img)VaultReader.observe(img,n);
+ }
  flowFirst=start;
  const newScrollHeight=document.documentElement.scrollHeight;
  window.scrollTo({
@@ -291,7 +305,16 @@ function resetFlow(n){
  const frag=document.createDocumentFragment();
  for(let i=start;i<=end;i++){frag.append(createFlow(i));}
  el("flowList").append(frag);
- for(let i=start;i<=end;i++)watchFlow.observe(el("flow-"+i));
+ for(let i=start;i<=end;i++){
+  const node=el("flow-"+i);
+  watchFlow.observe(node);
+  const img=node.querySelector("img");
+  if(img)VaultReader.observe(img,i);
+ }
+ for(let i=Math.max(start,n-1);i<=Math.min(end,n+2);i++){
+  const img=el("flow-"+i)?.querySelector("img");
+  if(img)VaultReader.load(img,i);
+ }
  updateFlowBounds();
  const align=()=>{
   const node=el("flow-"+n);
@@ -324,13 +347,22 @@ const topBtn=el("flowTopBtn");
 if(topBtn)topBtn.onclick=()=>prependFlow();
 function appendGrid(){
  const list=el("thumbGrid");const f=document.createDocumentFragment();
- for(let n=gridLast+1;n<=Math.min(TOTAL,gridLast+42);n++){
+ const first=gridLast+1;const last=Math.min(TOTAL,gridLast+42);
+ if(first>last)return;
+ for(let n=first;n<=last;n++){
   const b=document.createElement("button");b.className="thumb"+(n===page?" selected":"");b.dataset.thumb=n;
-  const img=document.createElement("img");VaultReader.observe(img,n);img.loading="lazy";img.decoding="async";img.alt=`第 ${n} 張縮圖`;
+  const img=document.createElement("img");img.decoding="async";img.alt=`第 ${n} 張縮圖`;
+  img.onerror=()=>{VaultReader.decode(n,true).then(u=>{img.src=u}).catch(()=>{});};
   const label=document.createElement("span");label.textContent=fmt(n);
   b.append(img,label);b.onclick=()=>{page=n;changeMode("single")};f.append(b);
  }
- gridLast=Math.min(TOTAL,gridLast+42);list.append(f);el("gridMore").hidden=gridLast===TOTAL;
+ list.append(f);
+ for(let n=first;n<=last;n++){
+  const btn=document.querySelector(`[data-thumb="${n}"]`);
+  const img=btn?.querySelector("img");
+  if(img)VaultReader.observe(img,n);
+ }
+ gridLast=last;el("gridMore").hidden=gridLast===TOTAL;
 }
 function changeMode(next){
  mode=next;
